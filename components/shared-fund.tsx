@@ -1,29 +1,37 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Trophy, DollarSign, Loader2 } from "lucide-react"
-import { supabase } from "@/lib/supabase"
-import { useToast } from "@/components/ui/use-toast"
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Trophy, DollarSign, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 // Helper function to format VND currency
 const formatVND = (amount: number) => {
-  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
-}
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(amount);
+};
 
 export default function MonthlyBounty() {
-  const [bountyAmount, setBountyAmount] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const { toast } = useToast()
+  const [bountyAmount, setBountyAmount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchBountyAmount()
-    const subscription = setupRealtimeSubscription()
+    fetchBountyAmount();
+    const subscription = setupRealtimeSubscription();
     return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const fetchBountyAmount = async () => {
     try {
@@ -31,61 +39,72 @@ export default function MonthlyBounty() {
         .from("bounty")
         .select("accumulated")
         .order("id", { ascending: false })
-        .limit(1)
+        .limit(1);
 
-      if (error) throw error
+      if (error) throw error;
 
       if (data && data.length > 0) {
-        setBountyAmount(data[0].accumulated)
+        setBountyAmount(data[0].accumulated);
       } else {
-        setBountyAmount(0)
-        console.log("No bounty records found")
+        setBountyAmount(0);
+        console.log("No bounty records found");
       }
     } catch (error) {
-      console.error("Error fetching bounty amount:", error)
+      console.error("Error fetching bounty amount:", error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const setupRealtimeSubscription = () => {
     return supabase
       .channel("bounty_changes")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "bounty" }, (payload) => {
-        console.log("Realtime insert payload:", payload)
-        setBountyAmount(payload.new.accumulated)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "bounty" },
+        (payload) => {
+          console.log("Realtime insert payload:", payload);
+          setBountyAmount(payload.new.accumulated);
 
-        const isDeposit = payload.new.amount_in > 0
-        const amount = isDeposit ? payload.new.amount_in : payload.new.amount_out
+          const isDeposit = payload.new.amount_in > 0;
+          const amount = isDeposit
+            ? payload.new.amount_in
+            : payload.new.amount_out;
 
-        toast({
-          title: isDeposit ? "New Deposit" : "New Withdrawal",
-          description: (
-            <div className="flex flex-col gap-1">
-              <div className="flex justify-between">
-                <span>Amount:</span>
-                <span className={isDeposit ? "text-green-600" : "text-red-600"}>{formatVND(amount)}</span>
-              </div>
-              {payload.new.transaction_content && (
+          toast(isDeposit ? "New Deposit" : "New Withdrawal", {
+            description: (
+              <div className="flex flex-col gap-1">
                 <div className="flex justify-between">
-                  <span>Content:</span>
-                  <span className="font-medium">{payload.new.transaction_content}</span>
+                  <span>Amount:</span>
+                  <span
+                    className={isDeposit ? "text-green-600" : "text-red-600"}
+                  >
+                    {formatVND(amount)}
+                  </span>
                 </div>
-              )}
-            </div>
-          ),
-          duration: 5000,
-        })
-      })
-      .subscribe()
-  }
+                {payload.new.transaction_content && (
+                  <div className="flex justify-between">
+                    <span>Content:</span>
+                    <span className="font-medium">
+                      {payload.new.transaction_content}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ),
+            duration: 5000,
+          });
+        }
+      )
+      .subscribe();
+  };
 
   if (isLoading) {
     return (
       <Card className="h-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </Card>
-    )
+    );
   }
 
   return (
@@ -96,9 +115,13 @@ export default function MonthlyBounty() {
             <Trophy className="mr-2 text-yellow-500" />
             Monthly Bounty
           </span>
-          <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatVND(bountyAmount)}</span>
+          <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            {formatVND(bountyAmount)}
+          </span>
         </CardTitle>
-        <CardDescription>Bounty pool for this month's top contributor</CardDescription>
+        <CardDescription>
+          Bounty pool for this month's top contributor
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center">
         <div className="relative w-48 h-48 mb-4">
@@ -115,9 +138,10 @@ export default function MonthlyBounty() {
             />
           </div>
         </div>
-        <p className="text-sm text-slate-500 dark:text-slate-400 text-center">Scan to contribute</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
+          Scan to contribute
+        </p>
       </CardContent>
     </Card>
-  )
+  );
 }
-
