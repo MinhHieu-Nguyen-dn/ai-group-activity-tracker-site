@@ -1,28 +1,31 @@
-import { Suspense } from "react"
-import dynamic from "next/dynamic"
-import { Toaster } from "@/components/ui/toaster"
-import Navbar from "@/components/navbar"
-import { Card } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
+import { Suspense } from "react";
+import dynamic from "next/dynamic";
+import Navbar from "@/components/navbar";
+import { Card } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import { Toaster } from "sonner";
 
 const MonthlyBounty = dynamic(() => import("@/components/shared-fund"), {
   loading: () => <LoadingCard height="300px" />,
-})
+});
 
 const MemberRanking = dynamic(() => import("@/components/member-ranking"), {
   loading: () => <LoadingCard height="500px" />,
-})
+});
 
-const TransactionHistory = dynamic(() => import("@/components/transaction-history"), {
-  loading: () => <LoadingCard height="300px" />,
-})
+const TransactionHistory = dynamic(
+  () => import("@/components/transaction-history"),
+  {
+    loading: () => <LoadingCard height="300px" />,
+  }
+);
 
 function LoadingCard({ height }: { height: string }) {
   return (
     <Card className={`h-[${height}] flex items-center justify-center`}>
       <Loader2 className="h-8 w-8 animate-spin" />
     </Card>
-  )
+  );
 }
 
 export default function Home() {
@@ -43,7 +46,9 @@ export default function Home() {
             <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
               Sharing is learning!
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2">Contribute and claim the monthly shared-bounty!</p>
+            <p className="text-slate-500 dark:text-slate-400 mt-2">
+              Contribute and claim the monthly shared-bounty!
+            </p>
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -67,8 +72,6 @@ export default function Home() {
           </div>
         </div>
       </main>
-      <Toaster />
     </div>
-  )
+  );
 }
-

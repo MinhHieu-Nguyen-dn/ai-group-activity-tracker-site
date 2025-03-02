@@ -1,70 +1,126 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useSortable } from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Plus, Minus, GripVertical, Upload, X, Check } from "lucide-react"
+import { useState } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Plus, Minus, GripVertical, Upload, X, Check } from "lucide-react";
+import { toast } from "sonner";
 
 interface Member {
-  id: string
-  name: string
-  image: string
-  postsThisMonth: number
-  totalPosts: number
+  id: string;
+  name: string;
+  image: string;
+  postsThisMonth: number;
+  totalPosts: number;
 }
 
 interface MemberRowProps {
-  member: Member
-  index: number
-  onUpdatePosts: (id: string, increment: boolean) => void
-  onDeleteMember: (id: string) => void
-  onEditMember: (id: string, data: Partial<Member>) => void
+  member: Member;
+  index: number;
+  onUpdateMember: () => void;
 }
 
-export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEditMember }: MemberRowProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editName, setEditName] = useState(member.name)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
+export function MemberRow({ member, index, onUpdateMember }: MemberRowProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(member.name);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: member.id })
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: member.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-  }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = (event) => {
-        const result = event.target?.result as string
-        setImagePreview(result)
-      }
-      reader.readAsDataURL(file)
+        setImagePreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
-  const handleSaveEdit = () => {
-    const updates: Partial<Member> = { name: editName }
-    if (imagePreview) {
-      updates.image = imagePreview
+  const handleSaveEdit = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/members/${member.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName,
+          image: imagePreview ?? member.image,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast("Member updated", { description: `${editName} has been updated.` });
+      setIsEditing(false);
+      setImagePreview(null);
+    } catch (error) {
+      toast("Error", {
+        description: (error as Error).message,
+        className: "bg-red-500 text-white",
+      });
     }
-    onEditMember(member.id, updates)
-    setIsEditing(false)
-    setImagePreview(null)
-  }
+    onUpdateMember();
+    setLoading(false);
+  };
 
-  const handleCancelEdit = () => {
-    setEditName(member.name)
-    setIsEditing(false)
-    setImagePreview(null)
-  }
+  const handleDelete = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/members/${member.id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+
+      toast("Member deleted", {
+        description: `${member.name} has been removed.`,
+      });
+    } catch (error) {
+      toast("Error", {
+        description: (error as Error).message,
+        className: "bg-red-500 text-white",
+      });
+    }
+    onUpdateMember();
+    setLoading(false);
+  };
+
+  const handleUpdatePosts = async (increment: boolean) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/members/${member.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ increment }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error);
+    } catch (error) {
+      toast("Error", {
+        description: (error as Error).message,
+        className: "bg-red-500 text-white",
+      });
+    }
+    onUpdateMember();
+    setLoading(false);
+  };
 
   return (
     <div
@@ -87,7 +143,12 @@ export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEdit
         {isEditing ? (
           <>
             <div className="relative h-10 w-10 rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700">
-              <Image src={imagePreview || member.image} alt={member.name} fill className="object-cover" />
+              <Image
+                src={imagePreview || member.image}
+                alt={member.name}
+                fill
+                className="object-cover"
+              />
               <label
                 htmlFor={`image-upload-${member.id}`}
                 className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center text-white opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
@@ -102,7 +163,11 @@ export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEdit
                 onChange={handleImageUpload}
               />
             </div>
-            <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full max-w-[200px]" />
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="w-full max-w-[200px]"
+            />
           </>
         ) : (
           <>
@@ -110,7 +175,12 @@ export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEdit
               className="relative h-10 w-10 rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 cursor-pointer"
               onClick={() => setIsEditing(true)}
             >
-              <Image src={member.image || "/placeholder.svg"} alt={member.name} fill className="object-cover" />
+              <Image
+                src={member.image || "/placeholder.svg"}
+                alt={member.name}
+                fill
+                className="object-cover"
+              />
             </div>
             <span
               className="font-medium cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
@@ -122,9 +192,13 @@ export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEdit
         )}
       </div>
 
-      <div className="col-span-2 text-center font-medium">{member.postsThisMonth}</div>
+      <div className="col-span-2 text-center font-medium">
+        {member.postsThisMonth}
+      </div>
 
-      <div className="col-span-2 text-center font-medium">{member.totalPosts}</div>
+      <div className="col-span-2 text-center font-medium">
+        {member.totalPosts}
+      </div>
 
       <div className="col-span-2 flex justify-center space-x-2">
         {isEditing ? (
@@ -132,7 +206,8 @@ export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEdit
             <Button
               variant="outline"
               size="icon"
-              onClick={handleCancelEdit}
+              disabled={loading}
+              onClick={() => setIsEditing(false)}
               className="h-8 w-8 transition-all duration-200 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
             >
               <X size={16} />
@@ -140,6 +215,7 @@ export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEdit
             <Button
               variant="outline"
               size="icon"
+              disabled={loading}
               onClick={handleSaveEdit}
               className="h-8 w-8 transition-all duration-200 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400"
             >
@@ -151,7 +227,8 @@ export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEdit
             <Button
               variant="outline"
               size="icon"
-              onClick={() => onUpdatePosts(member.id, false)}
+              disabled={loading}
+              onClick={() => handleUpdatePosts(false)}
               className="h-8 w-8 transition-all duration-200 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
             >
               <Minus size={16} />
@@ -159,7 +236,8 @@ export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEdit
             <Button
               variant="outline"
               size="icon"
-              onClick={() => onUpdatePosts(member.id, true)}
+              disabled={loading}
+              onClick={() => handleUpdatePosts(true)}
               className="h-8 w-8 transition-all duration-200 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400"
             >
               <Plus size={16} />
@@ -167,7 +245,8 @@ export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEdit
             <Button
               variant="outline"
               size="icon"
-              onClick={() => onDeleteMember(member.id)}
+              disabled={loading}
+              onClick={() => handleDelete()}
               className="h-8 w-8 transition-all duration-200 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
             >
               <X size={16} />
@@ -176,6 +255,5 @@ export function MemberRow({ member, index, onUpdatePosts, onDeleteMember, onEdit
         )}
       </div>
     </div>
-  )
+  );
 }
-
